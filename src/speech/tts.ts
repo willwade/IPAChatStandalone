@@ -81,7 +81,9 @@ export class TTS {
     try {
       await loadWebSpeechVoices();
       await WebSpeechTTS.speak(text, {
-        voice: WebSpeechTTS.pickVoice(this.settings.language),
+        // Prefer a registered SAPI voice matching the configured Azure voice
+        // name (e.g. "Libby") so plain-text fallback uses it key-free.
+        voice: WebSpeechTTS.pickVoice(this.settings.language, this.settings.voice.split('-').pop()?.replace('Neural', '')),
         rate: this.settings.rate,
         // Web Speech pitch is 0-2 (1 = normal); Azure stores cents. Approximate.
         pitch: clamp(this.settings.pitch === 0 ? 1 : 1 + this.settings.pitch / 1200, 0, 2),

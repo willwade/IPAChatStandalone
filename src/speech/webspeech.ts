@@ -72,13 +72,23 @@ export class WebSpeechTTS {
     });
   }
 
-  /** Pick a voice for the given language, preferring exact locale match. */
-  static pickVoice(lang: string): SpeechSynthesisVoice | null {
+  /** Pick a voice for the given language, preferring an exact locale match and,
+   * optionally, a voice whose name contains `preferredName` (e.g. the configured
+   * Azure voice friendly-part like "Libby") — useful once VoiceGarden has
+   * promoted that voice to SAPI so plain-text fallback uses it key-free. */
+  static pickVoice(lang: string, preferredName?: string): SpeechSynthesisVoice | null {
     const voices = getWebSpeechVoices();
     if (!voices.length) return null;
+    const langLower = lang.toLowerCase();
+    const base = lang.split('-')[0].toLowerCase();
+    const pref = preferredName?.toLowerCase();
+    const matches = (v: SpeechSynthesisVoice) => v.lang.toLowerCase() === langLower || v.lang.toLowerCase().startsWith(base);
+    const inLang = voices.filter(matches);
+    const pool = inLang.length ? inLang : voices;
     return (
-      voices.find((v) => v.lang.toLowerCase() === lang.toLowerCase()) ??
-      voices.find((v) => v.lang.toLowerCase().startsWith(lang.split('-')[0].toLowerCase())) ??
+      (pref ? pool.find((v) => v.name.toLowerCase().includes(pref)) : null) ??
+      pool.find((v) => v.default) ??
+      pool[0] ??
       null
     );
   }
