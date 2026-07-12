@@ -1,0 +1,84 @@
+name: Release zip
+
+# On tag (e.g. v1.0.0), build a complete, self-contained working directory
+# (dist/ + a NO-KEY .env.example + instructions) and attach it to a GitHub
+# release. End users download the zip, drop in their own Azure key/region,
+# and serve the static files — no build toolchain required on their machine.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+
+      # Build WITHOUT baking any key — the released zip must be key-free.
+      - name: Build (no key)
+        run: npm run build
+        env:
+          VITE_AZURE_KEY: ''
+          VITE_AZURE_REGION: ''
+
+      - name: Stage release directory
+        run: |
+          mkdir -p release/IPAChat
+          # Pre-built app (static HTML/JS/CSS) — open index.html or serve the folder.
+          cp -r dist release/IPAChat/
+          # Self-contained build sources + instructions for anyone who wants to rebuild.
+          cp -r src release/IPAChat/
+          cp -r public release/IPAChat/
+          cp package.json package-lock.json tsconfig.json vite.config.ts index.html .env.example README.md release/IPAChat/ 2>/dev/null || true
+          cat > release/IPAChat/GETTING-STARTED.txt <<'EOF'
+          IPA Chat — standalone build
+          ==========================
+
+          This zip contains a ready-to-run static web app (the dist/ folder).
+
+          QUICK START (no build needed)
+          -----------------------------
+          1. Get an Azure Speech key + region
+             (https://learn.microsoft.com/azure/ai-services/speech-services).
+          2. Serve the dist/ folder with any static server, e.g.:
+                cd dist && python -m http.server 8080
+             then open http://localhost:8080/?key=YOUR_KEY&region=uksouth
+          3. OR open the app and enter the key in Settings (⚙).
+
+          Grid 3: point a web-browser cell at the URL above (or at a local copy).
+
+          REBUILD FROM SOURCE
+          -------------------
+          1. Install Node.js 20+.
+          2. Copy .env.example to .env and fill in VITE_AZURE_KEY / VITE_AZURE_REGION.
+          3. npm ci && npm run build   -> output in dist/
+
+          URL PARAMETERS
+          --------------
+          ?config=<name|url>   load a phoneme/symbol config (e.g. ?config=example2)
+          ?mode=grid           show the button grid (default is the typing bar)
+          ?ui=kiosk|minimal    density variants
+          ?voice=en-GB-LibbyNeural
+          ?key=..&region=..    Azure credentials
+          EOF
+
+      - name: Zip
+        run: cd release && zip -r "IPAChat-${GITHUB_REF_NAME}.zip" IPAChat
+
+      - name: Create / attach release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release/IPAChat-*.zip

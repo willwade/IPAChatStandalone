@@ -1,0 +1,493 @@
+:root {
+  --ipa-primary: #1976d2;
+  --ipa-primary-dark: #1565c0;
+  --ipa-bg: #f5f7fa;
+  --ipa-surface: #ffffff;
+  --ipa-text: #1a1a1a;
+  --ipa-muted: #666;
+  --ipa-border: #d0d7de;
+  --ipa-danger: #d32f2f;
+  --ipa-success: #2e7d32;
+  --ipa-warn: #ed6c02;
+  --ipa-radius: 10px;
+  --ipa-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--ipa-bg);
+  color: var(--ipa-text);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+#app {
+  height: 100%;
+}
+
+.ipa-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px;
+  gap: 8px;
+}
+
+/* ---------- Scratchpad ---------- */
+.ipa-scratchpad {
+  background: var(--ipa-surface);
+  border: 2px solid var(--ipa-border);
+  border-radius: var(--ipa-radius);
+  min-height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-shadow: var(--ipa-shadow);
+  flex-shrink: 0;
+}
+
+.ipa-scratchpad__text {
+  font-size: clamp(28px, 6vw, 56px);
+  line-height: 1.2;
+  text-align: center;
+  word-break: break-word;
+  width: 100%;
+}
+
+.ipa-scratchpad__text .partial {
+  color: var(--ipa-warn);
+}
+
+.ipa-scratchpad__text .placeholder {
+  color: var(--ipa-muted);
+  opacity: 0.5;
+  font-size: 0.6em;
+}
+
+/* ---------- Toolbar ---------- */
+.ipa-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ipa-btn {
+  border: none;
+  border-radius: var(--ipa-radius);
+  padding: 14px 22px;
+  font-size: clamp(16px, 2.4vw, 22px);
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--ipa-surface);
+  color: var(--ipa-text);
+  border: 2px solid var(--ipa-border);
+  box-shadow: var(--ipa-shadow);
+  transition: transform 0.05s, background 0.1s;
+  min-height: 56px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ipa-btn:active {
+  transform: scale(0.96);
+}
+
+.ipa-btn--primary {
+  background: var(--ipa-primary);
+  color: #fff;
+  border-color: var(--ipa-primary-dark);
+}
+
+.ipa-btn--danger {
+  background: var(--ipa-danger);
+  color: #fff;
+  border-color: #b71c1c;
+}
+
+.ipa-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ipa-select {
+  border: 2px solid var(--ipa-border);
+  border-radius: var(--ipa-radius);
+  padding: 10px 14px;
+  font-size: clamp(15px, 2vw, 18px);
+  background: var(--ipa-surface);
+  min-height: 56px;
+}
+
+/* ---------- Keyboard ---------- */
+.ipa-keyboard {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.ipa-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ipa-group__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ipa-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-left: 4px;
+}
+
+.ipa-group__buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+}
+
+.ipa-key {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border: 2px solid var(--ipa-border);
+  border-radius: var(--ipa-radius);
+  background: var(--ipa-surface);
+  font-size: clamp(20px, 3.4vw, 30px);
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: transform 0.05s, background 0.1s;
+  color: var(--ipa-text);
+}
+
+.ipa-key:active {
+  transform: scale(0.93);
+  background: #e3f2fd;
+}
+
+.ipa-key img.ipa-key__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ipa-key__label {
+  position: relative;
+  z-index: 1;
+}
+
+.ipa-key--no-label .ipa-key__label {
+  display: none;
+}
+
+/* ---------- Overlay ---------- */
+.ipa-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.ipa-overlay__msg {
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 18px 32px;
+  border-radius: 14px;
+  font-size: clamp(18px, 3vw, 26px);
+  font-weight: 600;
+  max-width: 80vw;
+  text-align: center;
+}
+
+.ipa-overlay--error .ipa-overlay__msg {
+  background: rgba(211, 47, 47, 0.92);
+}
+
+.ipa-overlay--info .ipa-overlay__msg {
+  background: rgba(21, 101, 192, 0.92);
+}
+
+.ipa-overlay--fade {
+  animation: ipaFade 3s ease-in-out forwards;
+}
+
+@keyframes ipaFade {
+  0% { opacity: 1; }
+  66% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---------- UI modes ---------- */
+.ipa-app[data-ui='simplified'] .ipa-group__label {
+  display: none;
+}
+
+.ipa-app[data-ui='minimal'] .ipa-toolbar,
+.ipa-app[data-ui='minimal'] .ipa-group__label {
+  display: none;
+}
+
+.ipa-app[data-ui='kiosk'] {
+  padding: 4px;
+  gap: 4px;
+}
+
+.ipa-app[data-ui='kiosk'] .ipa-toolbar {
+  display: none;
+}
+
+.ipa-app[data-ui='kiosk'] .ipa-group__label {
+  display: none;
+}
+
+/* ---------- Message bar (PR40-style default) ---------- */
+.ipa-message-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+
+.ipa-message-container {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: auto hidden;
+  padding: 2px;
+  height: 90%;
+  min-height: 80px;
+  border: 1px solid var(--ipa-border);
+  border-radius: var(--ipa-radius);
+  background: #fff8ff;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.ipa-message-container::-webkit-scrollbar {
+  display: none;
+}
+
+.ipa-message-scroller {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 4px;
+  min-width: fit-content;
+  margin: 0 auto;
+}
+
+.ipa-message-placeholder {
+  color: var(--ipa-muted);
+  font-size: clamp(14px, 2.4vw, 20px);
+  font-style: italic;
+  padding: 8px;
+  text-align: center;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.ipa-tile {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: clamp(60px, 18vh, 160px);
+  aspect-ratio: 1 / 1.15;
+  margin: 1px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: #f8f9fa;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.15s ease;
+}
+
+.ipa-tile:hover {
+  transform: scale(1.05);
+}
+
+.ipa-tile:active {
+  transform: scale(0.95);
+}
+
+.ipa-tile--partial {
+  border: 2px dashed var(--ipa-warn);
+  background: rgba(255, 193, 7, 0.12);
+}
+
+.ipa-tile__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.ipa-tile__caption {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+}
+
+.ipa-tile__glyph {
+  font-size: clamp(24px, 5vw, 44px);
+  font-family: ui-monospace, 'Segoe UI', monospace;
+  font-weight: 500;
+}
+
+.ipa-tile--partial .ipa-tile__glyph {
+  color: var(--ipa-warn);
+  font-style: italic;
+}
+
+/* Message mode hides the scratchpad + grid chrome; the bar IS the surface. */
+.ipa-app[data-ui='message'] .ipa-scratchpad,
+.ipa-app[data-ui='message'] .ipa-keyboard {
+  display: none;
+}
+
+/* In grid modes the scratchpad shows the sequence; hide the message bar. */
+.ipa-app:not([data-ui='message']) .ipa-message-wrap {
+  display: none;
+}
+
+.ipa-app[data-ui='message'] .ipa-toolbar {
+  /* Compact toolbar at the bottom for message mode; hidden entirely if all
+     buttons are disabled (e.g. kiosk config). */
+  flex-shrink: 0;
+}
+
+/* ---------- Settings sheet (compact popover) ---------- */
+.ipa-settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: 8px;
+}
+
+.ipa-settings-card {
+  background: var(--ipa-surface);
+  width: 100%;
+  max-width: 320px;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.ipa-settings-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.ipa-settings-head strong { font-size: 15px; }
+.ipa-settings-hint {
+  font-size: 10px;
+  color: var(--ipa-muted);
+  white-space: nowrap;
+}
+
+.ipa-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ipa-settings-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ipa-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.ipa-settings-ctrl {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 13px;
+  border: 1px solid var(--ipa-border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.ipa-settings-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #f0f0f0;
+  color: var(--ipa-muted);
+}
+.ipa-settings-status[data-ok='true'] {
+  background: #e8f5e9;
+  color: var(--ipa-success);
+}
+
+.ipa-settings-behaviours {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.ipa-settings-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ipa-settings-check input {
+  width: 16px;
+  height: 16px;
+}
+
+#boot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 18px;
+  color: var(--ipa-muted);
+}

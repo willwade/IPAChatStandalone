@@ -1,0 +1,25 @@
+{
+  "name": "ipa-chat-standalone",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone IPA phoneme chat app — Azure Speech (client-side) + Web Speech fallback. Built for embedded web views (Grid 3).",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:only": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "microsoft-cognitiveservices-speech-sdk": "^1.41.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vite-plugin-pwa": "^0.20.5",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "language": "en-GB",
+  "voice": "en-GB-LibbyNeural",
+  "ui": "kiosk",
+  "layout": {
+    "en-GB": ["m", "p", "b", "t", "d", "k", "g", "n", "s", "ɒ", "æ", "i", "uː", "ɑː", "eɪ", "aɪ"]
+  },
+  "toolbar": { "showSpeak": true, "showClear": true, "showBackspace": true, "showUndo": false, "showVoicePicker": false, "showSettings": false },
+  "settings": { "speakWholeUtterance": true, "clearPhraseOnPlay": true, "engine": "auto" }
+}
