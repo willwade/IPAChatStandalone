@@ -2,6 +2,50 @@ import type { AppConfig, PhonemeCustomization, UIMode } from '../types';
 import { simplifyGroups, voicesByLanguage, detailedPhoneticData } from '../data/phoneticData';
 import { loadConfig } from '../core/config';
 
+/** ASCII filename stems → IPA phonemes, for bulk-import auto-mapping. Most IPA
+ * consonants that are plain ASCII letters (p, b, t, d, k, g, m, n, l, f, v, s,
+ * z, h, w, j) match by exact filename; this map covers the non-ASCII glyphs. */
+const PHONEME_ALIASES: Record<string, string> = {
+  ae: 'æ', '@': 'ə', schwa: 'ə', uh: 'ʌ', ah: 'ɑ', aw: 'ɔ', oh: 'ɒ', oe: 'œ',
+  sh: 'ʃ', esh: 'ʃ', zh: 'ʒ', eth: 'ð', dh: 'ð', theta: 'θ', th: 'θ',
+  ng: 'ŋ', eng: 'ŋ', ch: 'tʃ', tsh: 'tʃ', tch: 'tʃ', dzh: 'dʒ', d3: 'dʒ', jay: 'dʒ',
+  r: 'ɹ', er: 'ɜː', '3r': 'ɜː', yar: 'j',
+  "'": 'ˈ', '1': 'ˈ', primary: 'ˈ', ',': 'ˌ', '2': 'ˌ', secondary: 'ˌ',
+  length: 'ː', ':': 'ː', long: 'ː',
+};
+
+/** Try to map an image filename to a phoneme in the current layout. Returns the
+ * matched phoneme or null. Order: explicit sidecar mapping → exact filename →
+ * alias table → length-mark suffix variants (e.g. "i:" → "iː"). */
+function mapFileToPhoneme(
+  filename: string,
+  layout: string[],
+  sidecar?: Record<string, string>,
+): string | null {
+  const stem = filename.replace(/\.[^.]+$/, '').trim();
+  const layoutSet = new Set(layout);
+
+  // 1. sidecar mapping (by full filename or stem)
+  if (sidecar) {
+    if (sidecar[filename]) return sidecar[filename];
+    if (sidecar[stem]) return sidecar[stem];
+  }
+  // 2. exact match (case-insensitive)
+  const lower = stem.toLowerCase();
+  for (const p of layout) if (p.toLowerCase() === lower) return p;
+  // 3. alias table
+  if (layoutSet.has(PHONEME_ALIASES[lower])) return PHONEME_ALIASES[lower];
+  // 4. length-mark suffix: "i:" / "i_" / "ii" → "iː", etc.
+  const m = /^(.+?)[:_]?$/.exec(lower);
+  if (m) {
+    const base = m[1];
+    for (const p of layout) {
+      if (p.length === 2 && p.endsWith('\u02D0') && p[0].toLowerCase() === base && layoutSet.has(p)) return p;
+    }
+  }
+  return null;
+}
+
 /**
  * Config builder (?builder). A fully client-side editor for authoring phoneme
  * symbol sets: upload an image per phoneme, set colours, toggle hide-label /
@@ -99,6 +143,12 @@ export class Builder {
     load.textContent = 'Load JSON…';
     load.addEventListener('click', () => this.loadFromFile());
     bar.appendChild(load);
+    const importBtn = document.createElement('button');
+    importBtn.className = 'ipa-btn';
+    importBtn.textContent = '📁 Import image folder…';
+    importBtn.title = 'Pick a folder of phoneme-named images (or drop files onto the grid)';
+    importBtn.addEventListener('click', () => this.pickFolder());
+    bar.appendChild(importBtn);
     return bar;
   }
 
@@ -194,6 +244,20 @@ export class Builder {
   private renderGrid(): void {
     this.grid.innerHTML = '';
     this.phonemes.forEach((p, idx) => this.grid.appendChild(this.card(p, idx)));
+    // Allow dropping image files / a folder onto the grid for bulk import.
+    this.grid.addEventListener('dragover', (e) => {
+      if (e.dataTransfer?.types?.includes('Files')) {
+        e.preventDefault();
+        this.grid.classList.add('bldr-grid--over');
+      }
+    });
+    this.grid.addEventListener('dragleave', () => this.grid.classList.remove('bldr-grid--over'));
+    this.grid.addEventListener('drop', (e) => {
+      e.preventDefault();
+      this.grid.classList.remove('bldr-grid--over');
+      const files = e.dataTransfer?.files;
+      if (files && files.length) void this.bulkImport(Array.from(files));
+    });
   }
 
   private card(phoneme: string, idx: number): HTMLElement {
@@ -406,6 +470,78 @@ export class Builder {
       URL.revokeObjectURL(url);
       this.toast('Downloaded — drop into public/examples/ and load via ?config=<name>');
     }
+  }
+
+  /** Folder picker via the non-standard webkitdirectory input. Falls back to a
+   * normal multi-file picker if unsupported. */
+  private pickFolder(): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = 'image/*';
+    try {
+      input.setAttribute('webkitdirectory', '');
+      input.setAttribute('directory', '');
+    } catch {
+      /* older browsers — multi-file picker still works */
+    }
+    input.addEventListener('change', () => {
+      if (input.files && input.files.length) void this.bulkImport(Array.from(input.files));
+    });
+    input.click();
+  }
+
+  /** Bulk-import image files, auto-mapping filenames to layout phonemes.
+   * Recognises a sidecar mapping.json (filename-or-stem → phoneme). Reports
+   * mapped vs unmapped counts in a toast. */
+  private async bulkImport(files: File[]): Promise<void> {
+    const imageFiles = files.filter((f) => /^image\//.test(f.type) || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(f.name));
+    const sidecarFile = files.find((f) => /(^|[\\/])mapping\.json$/i.test(f.name));
+    let sidecar: Record<string, string> | undefined;
+    if (sidecarFile) {
+      try {
+        sidecar = JSON.parse(await sidecarFile.text());
+      } catch {
+        /* ignore malformed sidecar */
+      }
+    }
+    if (!imageFiles.length) {
+      this.toast('No image files found');
+      return;
+    }
+
+    let mapped = 0;
+    const unmapped: string[] = [];
+    for (const f of imageFiles) {
+      // Use just the basename in case a full path was supplied (folder pick).
+      const base = f.name.replace(/^.*[\\/]/, '');
+      const phoneme = mapFileToPhoneme(base, this.phonemes, sidecar);
+      if (phoneme) {
+        const dataUrl = await this.readFileAsDataURL(f);
+        this.setCust(phoneme, { image: dataUrl });
+        mapped++;
+      } else {
+        unmapped.push(base);
+      }
+    }
+
+    this.renderGrid();
+    this.renderPreview();
+    if (unmapped.length) {
+      const sample = unmapped.slice(0, 6).join(', ');
+      this.toast(`Mapped ${mapped}/${imageFiles.length}. Unmapped: ${sample}${unmapped.length > 6 ? '…' : ''}`, true);
+    } else {
+      this.toast(`Mapped ${mapped}/${imageFiles.length} images to phonemes`);
+    }
+  }
+
+  private readFileAsDataURL(f: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(f);
+    });
   }
 
   private loadFromFile(): void {
