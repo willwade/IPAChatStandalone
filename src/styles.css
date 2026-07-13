@@ -315,6 +315,11 @@ body {
   height: 100%;
 }
 
+.ipa-message-wrap.is-babbling .ipa-message-container {
+  border-style: dashed;
+  border-color: var(--ipa-warn);
+}
+
 .ipa-tile {
   position: relative;
   flex: 0 0 auto;

@@ -42,6 +42,9 @@ export class MessageBar {
     return this.el;
   }
 
+  /** Placeholder text shown when the bar is empty (e.g. "Type sounds…"). */
+  placeholder = 'Type sounds…';
+
   render(phonemes: string[], partial: string, config: AppConfig): void {
     const custom = config.ipaCustomizations ?? {};
     this.scroller.innerHTML = '';
@@ -50,7 +53,7 @@ export class MessageBar {
     if (!hasContent) {
       const ph = document.createElement('div');
       ph.className = 'ipa-message-placeholder';
-      ph.textContent = 'Type sounds…';
+      ph.textContent = this.placeholder;
       this.scroller.appendChild(ph);
       return;
     }

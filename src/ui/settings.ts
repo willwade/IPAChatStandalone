@@ -1,4 +1,4 @@
-import type { AppSettings, SpeechEngine } from '../types';
+import type { AppSettings, SpeakMode, SpeechEngine } from '../types';
 import { AzureTTS } from '../speech/azure';
 import { voicesByLanguage } from '../data/phoneticData';
 
@@ -96,9 +96,10 @@ export class SettingsSheet {
     // Behaviour toggles (compact row)
     const behaviours = document.createElement('div');
     behaviours.className = 'ipa-settings-behaviours';
-    behaviours.appendChild(this.check('speakWholeUtterance', 'Whole utterance', s.speakWholeUtterance));
+    behaviours.appendChild(this.field('Speak as you type', this.speakModeSelect(s)));
     behaviours.appendChild(this.check('clearPhraseOnPlay', 'Clear on play', s.clearPhraseOnPlay));
     behaviours.appendChild(this.check('speakOnButtonPress', 'Speak on press', s.speakOnButtonPress));
+    behaviours.appendChild(this.check('babble', 'Babble (Enter to speak)', s.babble));
     this.card.appendChild(behaviours);
   }
 
@@ -138,6 +139,16 @@ export class SettingsSheet {
       sel.add(new Option(label, val, false, s.engine === val));
     }
     sel.addEventListener('change', () => this.actions.onChange({ engine: sel.value as SpeechEngine }));
+    return sel;
+  }
+
+  private speakModeSelect(s: AppSettings): HTMLElement {
+    const sel = document.createElement('select');
+    sel.className = 'ipa-settings-ctrl';
+    for (const m of ['off', 'each', 'running'] as SpeakMode[]) {
+      sel.add(new Option(m === 'off' ? 'Off' : m === 'each' ? 'Each phoneme' : 'Running sequence', m, false, s.speakMode === m));
+    }
+    sel.addEventListener('change', () => this.actions.onChange({ speakMode: sel.value as SpeakMode }));
     return sel;
   }
 

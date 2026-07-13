@@ -27,6 +27,9 @@ export type UIMode = 'message' | 'grid' | 'simplified' | 'minimal' | 'kiosk';
 /** Speech engine selection. */
 export type SpeechEngine = 'auto' | 'azure' | 'webspeech' | 'vg';
 
+/** Auditory feedback while typing. */
+export type SpeakMode = 'off' | 'each' | 'running';
+
 /** Runtime settings persisted to localStorage. */
 export interface AppSettings {
   language: string;
@@ -39,6 +42,10 @@ export interface AppSettings {
   engine: SpeechEngine;
   azureKey?: string;
   azureRegion?: string;
+  /** How typing sounds: silent / speak each phoneme / speak the running sequence. */
+  speakMode: SpeakMode;
+  /** Babble: speak each phoneme as typed into a hidden buffer; Enter commits it. */
+  babble: boolean;
 }
 
 /** A phoneme group rendered as a labelled colour band. */

@@ -7,6 +7,8 @@ export interface ShortcutActions {
   toggleSettings(): void;
   closeSettings(): void;
   isSettingsOpen(): boolean;
+  cycleSpeakMode(): void;
+  toggleBabble(): void;
 }
 
 /**
@@ -21,6 +23,8 @@ export interface ShortcutActions {
  *     - Ctrl/Cmd + Backspace  -> clear all
  *     - Ctrl/Cmd + Z          -> undo last action
  *     - Ctrl/Cmd + ,          -> toggle settings panel
+ *     - Ctrl/Cmd + Shift + M  -> cycle speak-as-you-type mode (off/each/running)
+ *     - Ctrl/Cmd + Shift + B  -> toggle babble mode
  *     - Escape                -> close settings panel (if open)
  *
  * When the settings panel is open, only Escape / Ctrl+, are processed so typing
@@ -74,6 +78,17 @@ export class Shortcuts {
       if (e.key.toLowerCase() === 'z') {
         e.preventDefault();
         this.actions.undo();
+        return;
+      }
+      // Ctrl+Shift+M = cycle speak-as-you-type mode; Ctrl+Shift+B = toggle babble.
+      if (e.shiftKey && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        this.actions.cycleSpeakMode();
+        return;
+      }
+      if (e.shiftKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        this.actions.toggleBabble();
         return;
       }
       return; // ignore other ctrl/cmd combos

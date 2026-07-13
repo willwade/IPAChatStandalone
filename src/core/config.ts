@@ -1,4 +1,4 @@
-import type { AppConfig, AppSettings, PhonemeCustomization, ToolbarConfig, UIMode } from '../types';
+import type { AppConfig, AppSettings, PhonemeCustomization, SpeakMode, ToolbarConfig, UIMode } from '../types';
 import { urlParams } from './urlparams';
 import { storage } from './storage';
 
@@ -11,6 +11,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   speakWholeUtterance: false,
   clearPhraseOnPlay: true,
   engine: 'auto',
+  speakMode: 'off',
+  babble: false,
 };
 
 const DEFAULT_TOOLBAR: Required<ToolbarConfig> = {
@@ -139,6 +141,14 @@ export async function loadConfig(): Promise<{ config: AppConfig; settings: AppSe
   if (engineParam && ['auto', 'azure', 'webspeech', 'vg'].includes(engineParam)) {
     settings.engine = engineParam as AppSettings['engine'];
   }
+
+  const speakModeParam = urlParams.get('speakMode');
+  if (speakModeParam && ['off', 'each', 'running'].includes(speakModeParam)) {
+    settings.speakMode = speakModeParam as SpeakMode;
+  }
+  const babbleParam = urlParams.get('babble');
+  if (babbleParam === '1' || babbleParam === 'true') settings.babble = true;
+  if (babbleParam === '0' || babbleParam === 'false') settings.babble = false;
 
   // Azure credentials may be supplied (highest to lowest):
   //   URL params  >  config file  >  localStorage  >  build-time VITE_* env

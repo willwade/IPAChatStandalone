@@ -13,6 +13,7 @@ import { tokenizePhonemes, removeLastPhoneme } from '../phoneme/tokenize';
 
 interface AppState {
   text: string; // raw phoneme string (may include `/.../` delimiters)
+  babble: string; // babble-mode buffer (committed to `text` on Enter)
   undoStack: string[];
 }
 
@@ -36,7 +37,7 @@ export class App {
     this.root = root;
     this.config = config;
     this.settings = settings;
-    this.state = { text: '', undoStack: [] };
+    this.state = { text: '', babble: '', undoStack: [] };
     this.tts = new TTS(settings);
 
     this.messageBar = new MessageBar({ onPlay: (p) => this.playSingle(p) });
@@ -61,6 +62,8 @@ export class App {
       toggleSettings: () => this.settingsSheet.toggle(this.settings),
       closeSettings: () => this.settingsSheet.close(),
       isSettingsOpen: () => this.settingsSheet.isOpen,
+      cycleSpeakMode: () => this.cycleSpeakMode(),
+      toggleBabble: () => this.toggleBabble(),
     });
   }
 
@@ -83,6 +86,7 @@ export class App {
 
     this.shortcuts.attach();
     this.keyboard.render(this.config, this.settings.language);
+    this.syncBabblePlaceholder();
     this.render();
 
     if (!this.tts.usingAzure) {
@@ -99,21 +103,63 @@ export class App {
   }
 
   appendPhoneme(phoneme: string): void {
-    this.pushUndo();
-    this.state.text += phoneme;
-
-    if (this.settings.speakOnButtonPress) {
-      const tokens = tokenizePhonemes(this.state.text);
-      // Speak the just-completed phoneme (if it just closed a `/.../`).
-      if (tokens.completedPhonemes.length && !tokens.isInProgress) {
-        const last = tokens.completedPhonemes[tokens.completedPhonemes.length - 1];
-        void this.tts.speakSinglePhoneme(last).then((r) => this.reportSpeak(r));
-      }
+    // In babble mode, typed phonemes go into a hidden buffer (heard as they
+    // complete) and are committed to the message only on Enter.
+    if (this.settings.babble) {
+      this.pushUndo();
+      const before = this.state.babble;
+      this.state.babble += phoneme;
+      this.speakOnType(before, this.state.babble);
+      this.render();
+      return;
     }
+
+    this.pushUndo();
+    const before = this.state.text;
+    this.state.text += phoneme;
+    this.speakOnType(before, this.state.text);
     this.render();
   }
 
+  /** Apply the current speakMode (off/each/running) to a typing change. Babble
+   * mode always implies 'each' so the user hears every phoneme as they type. */
+  private speakOnType(beforeRaw: string, afterRaw: string): void {
+    const effectiveMode = this.settings.babble ? 'each' : this.settings.speakMode;
+    if (effectiveMode === 'off' && !this.settings.speakOnButtonPress) return;
+    const before = tokenizePhonemes(beforeRaw);
+    const after = tokenizePhonemes(afterRaw);
+    const grew = after.completedPhonemes.length > before.completedPhonemes.length;
+    if (!grew || after.isInProgress) return; // wait until a phoneme actually completes
+    if (effectiveMode === 'running') {
+      const seq = after.completedPhonemes.join('');
+      void this.tts.speakPhonemeSequence(seq).then((r) => this.reportSpeak(r));
+    } else {
+      const last = after.completedPhonemes[after.completedPhonemes.length - 1];
+      void this.tts.speakSinglePhoneme(last).then((r) => this.reportSpeak(r));
+    }
+  }
+
   async onSpeak(): Promise<void> {
+    // In babble mode, Enter commits the babble buffer to the message and speaks it.
+    if (this.settings.babble && this.state.babble) {
+      const tokens = tokenizePhonemes(this.state.babble);
+      if (tokens.isInProgress) {
+        this.overlay.show('Finish the phoneme first', 'info', 1500);
+        return;
+      }
+      const ipa = tokens.completedPhonemes.join('');
+      const result = await this.tts.speakPhonemeSequence(ipa);
+      this.reportSpeak(result);
+      if (result.ok) {
+        this.pushUndo();
+        this.state.text = this.state.babble;
+        this.state.babble = '';
+        if (this.settings.clearPhraseOnPlay) this.state.text = '';
+        this.render();
+      }
+      return;
+    }
+
     const tokens = tokenizePhonemes(this.state.text);
     if (!tokens.hasValidInput) {
       this.overlay.show('Nothing to say', 'info', 1500);
@@ -125,9 +171,7 @@ export class App {
     }
 
     const ipa = tokens.completedPhonemes.join('');
-    const result = this.settings.speakWholeUtterance
-      ? await this.tts.speakPhonemeSequence(ipa)
-      : await this.tts.speakPhonemeSequence(ipa); // both paths use SSML phoneme blend
+    const result = await this.tts.speakPhonemeSequence(ipa);
 
     this.reportSpeak(result);
 
@@ -139,14 +183,25 @@ export class App {
   }
 
   backspace(): void {
+    if (this.settings.babble && this.state.babble) {
+      this.pushUndo();
+      this.state.babble = removeLastPhoneme(this.state.babble).newText;
+      this.render();
+      return;
+    }
     if (!this.state.text) return;
     this.pushUndo();
-    const res = removeLastPhoneme(this.state.text);
-    this.state.text = res.newText;
+    this.state.text = removeLastPhoneme(this.state.text).newText;
     this.render();
   }
 
   clearAll(): void {
+    if (this.settings.babble && this.state.babble) {
+      this.pushUndo();
+      this.state.babble = '';
+      this.render();
+      return;
+    }
     if (!this.state.text) return;
     this.pushUndo();
     this.state.text = '';
@@ -159,8 +214,38 @@ export class App {
       this.overlay.show('Nothing to undo', 'info', 1200);
       return;
     }
-    this.state.text = prev;
+    // Restore whichever buffer was active. We store a marker for babble via the
+    // leading byte \uE019 (a Private Use char unlikely to appear in real input).
+    if (prev.startsWith('\uE019')) {
+      this.state.babble = prev.slice(1);
+    } else {
+      this.state.text = prev;
+    }
     this.render();
+  }
+
+  /** Ctrl+Shift+M: cycle speak-as-you-type mode off → each → running → off. */
+  cycleSpeakMode(): void {
+    const next = this.settings.speakMode === 'off' ? 'each' : this.settings.speakMode === 'each' ? 'running' : 'off';
+    this.updateSettings({ speakMode: next });
+    this.overlay.show('Speak as you type: ' + next, 'info', 1500);
+  }
+
+  /** Ctrl+Shift+B: toggle babble mode. */
+  toggleBabble(): void {
+    const on = !this.settings.babble;
+    this.updateSettings({ babble: on });
+    // Clear any in-flight babble when leaving the mode.
+    if (!on && this.state.babble) {
+      this.pushUndo();
+      this.state.babble = '';
+    }
+    this.syncBabblePlaceholder();
+    this.overlay.show(on ? 'Babble on — Enter to speak' : 'Babble off', 'info', 1500);
+  }
+
+  private syncBabblePlaceholder(): void {
+    this.messageBar.placeholder = this.settings.babble ? 'Babbling — type, then Enter to speak' : 'Type sounds…';
   }
 
   // ---------- settings ----------
@@ -169,6 +254,7 @@ export class App {
     this.settings = { ...this.settings, ...patch };
     this.tts.setSettings(this.settings);
     storage.setSettings(patch);
+    if (patch.babble !== undefined) this.syncBabblePlaceholder();
     // Re-render keyboard if language changed; toolbar if voice/engine changed.
     if (patch.language) this.keyboard.render(this.config, this.settings.language);
     this.render();
@@ -177,8 +263,10 @@ export class App {
   // ---------- rendering ----------
 
   private render(): void {
-    const tokens = tokenizePhonemes(this.state.text);
-    this.scratchpad.render(this.state.text);
+    // In babble mode the bar shows the babble buffer (what's being explored).
+    const active = this.settings.babble ? this.state.babble : this.state.text;
+    const tokens = tokenizePhonemes(active);
+    this.scratchpad.render(active);
     this.messageBar.render(tokens.completedPhonemes, tokens.partialInput, this.config);
     this.toolbar.render({
       toolbar: resolveToolbar(this.config.toolbar),
@@ -188,6 +276,7 @@ export class App {
       canUndo: this.state.undoStack.length > 0,
       engineBadge: this.tts.engineBadge,
     });
+    this.messageBar.element.classList.toggle('is-babbling', !!this.settings.babble && !this.state.babble);
   }
 
   private reportSpeak(r: { ok: boolean; engine: string; message?: string }): void {
@@ -201,7 +290,9 @@ export class App {
   }
 
   private pushUndo(): void {
-    this.state.undoStack.push(this.state.text);
+    // Tag babble-buffer snapshots with a PUA marker so undo restores the right one.
+    const snapshot = this.settings.babble ? '\uE019' + this.state.babble : this.state.text;
+    this.state.undoStack.push(snapshot);
     if (this.state.undoStack.length > MAX_UNDO) this.state.undoStack.shift();
   }
 }
