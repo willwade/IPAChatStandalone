@@ -30,7 +30,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
-        // Don't aggressively cache remote configs or the Azure endpoint
+        // The cues/ example image set is large (8MB+); don't force-precache it.
+        // Files are still deployed and fetched on demand when a config uses them.
+        globIgnores: ['images/cues/**'],
         navigateFallback: 'index.html',
       },
     }),

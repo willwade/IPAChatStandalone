@@ -56,6 +56,10 @@ export interface AppConfig {
   version?: number;
   language?: string;
   voice?: string;
+  /** Base URL prepended to relative image paths in ipaCustomizations. Images
+   * may be data: URLs, absolute http(s) URLs, or relative paths. Defaults to
+   * the config file's directory (for remote configs) or the site base. */
+  imageBase?: string;
   layout?: LayoutMap;
   groups?: Record<string, PhonemeGroup>;
   ipaCustomizations?: Record<string, PhonemeCustomization>;

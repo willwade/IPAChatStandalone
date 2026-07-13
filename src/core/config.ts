@@ -26,14 +26,18 @@ const DEFAULT_TOOLBAR: Required<ToolbarConfig> = {
 const DEFAULT_UI: UIMode = 'message';
 
 /** Fetch a remote or bundled config JSON, with a short timeout. */
-async function fetchConfig(url: string): Promise<AppConfig | null> {
+async function fetchConfig(url: string): Promise<{ config: AppConfig; baseUrl: string } | null> {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 8000);
     const res = await fetch(url, { signal: ctrl.signal });
     clearTimeout(t);
     if (!res.ok) return null;
-    return normalizeConfig(await res.json());
+    const config = normalizeConfig(await res.json());
+    // Default imageBase to the config file's own directory so relative image
+    // paths in the config resolve alongside it.
+    const baseUrl = url.includes('/') ? url.replace(/[^/]*$/, '') : '';
+    return { config, baseUrl };
   } catch {
     return null;
   }
@@ -65,10 +69,14 @@ function normalizeConfig(raw: any): AppConfig {
  */
 export async function loadConfig(): Promise<{ config: AppConfig; settings: AppSettings }> {
   let config: AppConfig = {};
+  let remoteBase = '';
 
   // 1. bundled default
   const bundled = await fetchConfig('./config.default.json');
-  if (bundled) config = { ...bundled };
+  if (bundled) {
+    config = { ...bundled.config };
+    remoteBase = bundled.baseUrl;
+  }
 
   // 2. ?config=
   const cfgRef = urlParams.get('config');
@@ -77,7 +85,17 @@ export async function loadConfig(): Promise<{ config: AppConfig; settings: AppSe
       ? cfgRef
       : `./examples/${cfgRef}.json`;
     const remote = await fetchConfig(cfgUrl);
-    if (remote) config = mergeConfig(config, remote);
+    if (remote) {
+      config = mergeConfig(config, remote.config);
+      // A remote config's image paths resolve relative to IT, not the default.
+      remoteBase = remote.baseUrl;
+    }
+  }
+
+  // Resolve imageBase: explicit config value wins; else the loaded config's
+  // directory; else the document base (empty string = relative to page).
+  if (!config.imageBase) {
+    config.imageBase = remoteBase || '';
   }
 
   // 3. persisted settings (runtime user changes)
@@ -182,4 +200,14 @@ export function resolveToolbar(t: ToolbarConfig | undefined): Required<ToolbarCo
 
 export function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
+}
+
+/** Resolve an ipaCustomization `image` value to a usable src.
+ *  - data: URLs and absolute http(s) URLs pass through unchanged.
+ *  - anything else is prefixed with the config's `imageBase` (set by loadConfig
+ *    to the config file's directory for remote configs, or '' for bundled). */
+export function resolveImage(image: string | undefined, imageBase?: string): string {
+  if (!image) return '';
+  if (/^data:/i.test(image) || /^https?:\/\//i.test(image)) return image;
+  return (imageBase ?? '') + image;
 }

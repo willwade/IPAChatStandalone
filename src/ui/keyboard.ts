@@ -1,6 +1,7 @@
 import type { AppConfig, PhonemeCustomization } from '../types';
 import { simplifyGroups } from '../data/phoneticData';
 import { voicesByLanguage } from '../data/phoneticData';
+import { resolveImage } from '../core/config';
 
 export interface KeyboardActions {
   onPhoneme(phoneme: string): void;
@@ -72,14 +73,14 @@ export class Keyboard {
       buttons.className = 'ipa-group__buttons';
 
       for (const p of visible) {
-        buttons.appendChild(this.makeKey(p, custom[p]));
+        buttons.appendChild(this.makeKey(p, custom[p], config.imageBase));
       }
       wrap.appendChild(buttons);
       this.el.appendChild(wrap);
     }
   }
 
-  private makeKey(phoneme: string, cust: PhonemeCustomization | undefined): HTMLElement {
+  private makeKey(phoneme: string, cust: PhonemeCustomization | undefined, imageBase?: string): HTMLElement {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'ipa-key';
@@ -98,7 +99,7 @@ export class Keyboard {
     if (hasImg) {
       const img = document.createElement('img');
       img.className = 'ipa-key__img';
-      img.src = cust!.image!;
+      img.src = resolveImage(cust!.image, imageBase);
       img.alt = phoneme;
       img.draggable = false;
       btn.appendChild(img);

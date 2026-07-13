@@ -1,4 +1,5 @@
 import type { AppConfig, PhonemeCustomization } from '../types';
+import { resolveImage } from '../core/config';
 
 export interface TileActions {
   onPlay(phoneme: string): void;
@@ -54,9 +55,9 @@ export class MessageBar {
       return;
     }
 
-    phonemes.forEach((p, i) => this.scroller.appendChild(this.makeTile(p, custom[p], false, i)));
+    phonemes.forEach((p, i) => this.scroller.appendChild(this.makeTile(p, custom[p], false, i, config.imageBase)));
     if (partial) {
-      this.scroller.appendChild(this.makeTile(partial.replace(/^\//, ''), custom[partial.replace(/^\//, '')], true, phonemes.length));
+      this.scroller.appendChild(this.makeTile(partial.replace(/^\//, ''), custom[partial.replace(/^\//, '')], true, phonemes.length, config.imageBase));
     }
 
     // Auto-scroll to the most recent tile.
@@ -65,7 +66,7 @@ export class MessageBar {
     });
   }
 
-  private makeTile(phoneme: string, cust: PhonemeCustomization | undefined, partial: boolean, index: number): HTMLElement {
+  private makeTile(phoneme: string, cust: PhonemeCustomization | undefined, partial: boolean, index: number, imageBase?: string): HTMLElement {
     const tile = document.createElement('div');
     tile.className = 'ipa-tile' + (partial ? ' ipa-tile--partial' : '');
     tile.dataset.phoneme = phoneme;
@@ -74,7 +75,7 @@ export class MessageBar {
     if (cust?.image) {
       const img = document.createElement('img');
       img.className = 'ipa-tile__img';
-      img.src = cust.image;
+      img.src = resolveImage(cust.image, imageBase);
       img.alt = phoneme;
       img.draggable = false;
       tile.appendChild(img);
