@@ -38,18 +38,24 @@ export class VoiceGardenBridge {
   }
 
   /** Find a VoiceGarden-promoted voice for the language, preferring the
-   * configured voice's friendly name (e.g. "Libby" from en-GB-LibbyNeural). */
+   * configured voice's friendly name (e.g. "Libby" from en-GB-LibbyNeural).
+   * Conservative: only matches VoiceGarden-style names ("Azure <Name>",
+   * "Sherpa …", "VoiceGarden …", "Cloud-…") — excludes Edge's own
+   * "Microsoft … Online (Natural)" and built-in Desktop voices. */
   static pickVoice(voiceId: string, lang: string): SpeechSynthesisVoice | null {
     const voices = getWebSpeechVoices();
     if (!voices.length) return null;
-    const friendly = voiceId.split('-').pop()?.replace(/Neural/i, '').toLowerCase(); // "libby"
+    const isVg = (v: SpeechSynthesisVoice) =>
+      /^(Azure|Sherpa|VoiceGarden|Cloud)/i.test(v.name) && !/Online \(Natural\)/i.test(v.name);
+    const vgVoices = voices.filter(isVg);
+    if (!vgVoices.length) return null;
+    const friendly = voiceId.split('-').pop()?.replace(/Neural/i, '').toLowerCase();
     const langLower = lang.toLowerCase();
     const base = lang.split('-')[0].toLowerCase();
-    const inLang = voices.filter((v) => v.lang.toLowerCase() === langLower || v.lang.toLowerCase().startsWith(base));
-    const pool = inLang.length ? inLang : voices;
+    const inLang = vgVoices.filter((v) => v.lang.toLowerCase() === langLower || v.lang.toLowerCase().startsWith(base));
+    const pool = inLang.length ? inLang : vgVoices;
     return (
       (friendly ? pool.find((v) => v.name.toLowerCase().includes(friendly)) : null) ??
-      pool.find((v) => v.default) ??
       pool[0] ??
       null
     );

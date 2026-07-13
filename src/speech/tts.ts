@@ -7,14 +7,12 @@ import { VoiceGardenBridge } from './vgbridge';
 export type SpeakResult = { ok: true; engine: 'azure' | 'webspeech' | 'vg' } | { ok: false; engine: 'none'; message: string };
 
 /**
- * Unified TTS. Strategy:
- *  - engine === 'azure': only use Azure; fail loudly if not configured.
- *  - engine === 'webspeech': only use Web Speech.
- *  - engine === 'auto' (default): use Azure when configured; otherwise Web Speech.
- *
- * `usePhonemes` controls whether the input is an IPA sequence (Azure only
- * supports true IPA phoneme synthesis). If forced through Web Speech the
- * engine flag is recorded but IPA fidelity is not guaranteed.
+ * Unified TTS. Strategy by `engine` setting:
+ *  - 'azure'      : client-side Azure Speech SDK (needs key). Falls back to Web Speech on failure.
+ *  - 'vg'         : VoiceGarden bridge — PUA-sentinel Speech Markdown to a promoted SAPI voice (key-free IPA).
+ *  - 'webspeech'  : plain-text browser TTS (no IPA fidelity).
+ *  - 'auto'       : Azure when a key is set; else VoiceGarden when a promoted voice is
+ *                   detected; else Web Speech. This gives Grid 3 key-free IPA with zero config.
  */
 export class TTS {
   private settings: AppSettings;
@@ -33,11 +31,32 @@ export class TTS {
     return AzureTTS.configured(this.settings.azureKey, this.settings.azureRegion);
   }
 
-  /** Whether Azure is the active engine for the current settings. */
+  /** True if a VoiceGarden-promoted voice appears in speechSynthesis.getVoices().
+   * Conservative name match: "Azure <Name>", Sherpa, VoiceGarden, or Cloud-*.
+   * Excludes Edge's own "Microsoft … Online (Natural)" and built-in Desktop voices. */
+  get vgVoiceAvailable(): boolean {
+    return VoiceGardenBridge.pickVoice(this.settings.voice, this.settings.language) != null;
+  }
+
+  /** Whether Azure is the active engine for the current settings (best-effort,
+   * before the async voice probe that auto mode may do). */
   get usingAzure(): boolean {
     if (this.settings.engine === 'azure') return this.azureReady;
-    if (this.settings.engine === 'webspeech') return false;
+    if (this.settings.engine === 'webspeech' || this.settings.engine === 'vg') return false;
     return this.azureReady; // auto
+  }
+
+  /** A short label for the UI badge. */
+  get engineBadge(): string {
+    switch (this.settings.engine) {
+      case 'azure': return this.azureReady ? 'Azure' : 'Azure (no key)';
+      case 'vg': return 'VoiceGarden';
+      case 'webspeech': return 'Web Speech';
+      default:
+        if (this.azureReady) return 'Azure';
+        if (this.vgVoiceAvailable) return 'VoiceGarden';
+        return 'Web Speech';
+    }
   }
 
   async speakPhonemeSequence(ipa: string): Promise<SpeakResult> {
@@ -52,12 +71,25 @@ export class TTS {
     return this.speak(text, { usePhonemes: false, isWholeUtterance: false });
   }
 
+  /** Resolve the effective engine for the current settings. 'auto' probes the
+   * voice list so it can pick VoiceGarden when there's no Azure key. */
+  private async resolveEngine(): Promise<'azure' | 'vg' | 'webspeech'> {
+    const e = this.settings.engine;
+    if (e === 'azure') return this.azureReady ? 'azure' : 'webspeech';
+    if (e === 'vg') return 'vg';
+    if (e === 'webspeech') return 'webspeech';
+    // auto: key first, then VoiceGarden, then plain Web Speech
+    if (this.azureReady) return 'azure';
+    await loadWebSpeechVoices();
+    return this.vgVoiceAvailable ? 'vg' : 'webspeech';
+  }
+
   private async speak(text: string, opts: { usePhonemes: boolean; isWholeUtterance: boolean }): Promise<SpeakResult> {
     if (!text) return { ok: false, engine: 'none', message: 'Nothing to say' };
 
-    // VoiceGarden bridge: send PUA-sentinel + SSML via Web Speech to a
-    // promoted SAPI voice. Key-free, full <phoneme> fidelity.
-    if (this.settings.engine === 'vg') {
+    const engine = await this.resolveEngine();
+
+    if (engine === 'vg') {
       if (!VoiceGardenBridge.supported()) return { ok: false, engine: 'none', message: 'Web Speech unavailable' };
       try {
         await loadWebSpeechVoices();
@@ -75,8 +107,7 @@ export class TTS {
       }
     }
 
-    const wantAzure = this.usingAzure;
-    if (wantAzure) {
+    if (engine === 'azure') {
       try {
         await AzureTTS.speak(text, this.settings.azureKey!, this.settings.azureRegion!, {
           voice: this.settings.voice,
@@ -88,7 +119,7 @@ export class TTS {
         });
         return { ok: true, engine: 'azure' };
       } catch (e) {
-        // In 'auto', fall through to Web Speech on failure.
+        // Fall through to Web Speech on Azure failure.
         if (this.settings.engine === 'azure') {
           return { ok: false, engine: 'none', message: errMsg(e) };
         }
@@ -97,7 +128,7 @@ export class TTS {
 
     // Web Speech fallback
     if (!WebSpeechTTS.supported()) {
-      return { ok: false, engine: 'none', message: wantAzure ? 'Azure failed and Web Speech unavailable' : 'Web Speech unavailable' };
+      return { ok: false, engine: 'none', message: 'Web Speech unavailable' };
     }
     try {
       await loadWebSpeechVoices();

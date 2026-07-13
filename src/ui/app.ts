@@ -186,7 +186,7 @@ export class App {
       voice: this.settings.voice,
       canSpeak: tokens.hasValidInput && !tokens.isInProgress,
       canUndo: this.state.undoStack.length > 0,
-      engineBadge: this.tts.usingAzure ? 'Azure' : 'Web Speech',
+      engineBadge: this.tts.engineBadge,
     });
   }
 
