@@ -85,7 +85,37 @@ npm run preview      # serve the production build locally
 The bundled `config.default.json` ships the PR 40 symbol set (per-phoneme
 images) so the message bar shows symbols out of the box.
 
-## Provisioning speech
+## Speech
+
+Three speech paths, selectable via `?engine=` or Settings (Ctrl+,):
+
+| Engine | When to use | IPA `<phoneme>`? | Key needed? |
+|--------|-------------|------------------|-------------|
+| `auto` (default) | Azure if a key is configured, else Web Speech | Azure: yes; Web Speech: no | Azure: yes |
+| `azure` | Force client-side Azure Speech SDK | yes | yes |
+| `vg` | **VoiceGarden bridge** — key-free IPA via a promoted SAPI voice | yes | **no** |
+| `webspeech` | Plain-text browser TTS (uses SAPI voices on Windows) | no | no |
+
+### VoiceGarden bridge (`engine: vg`) — key-free IPA
+
+For embedded web views (Grid 3) where you want full IPA fidelity without an
+Azure key in the page. Requires [VoiceGarden-SAPI](https://github.com/AACTools/VoiceGarden-SAPI)
+**v0.4.6+**:
+
+1. Promote a voice to SAPI (`promote --engine azure --voice en-GB-LibbyNeural …`,
+   or via the UI). v0.4.6 registers it in `Speech_OneCore` so Chrome/Edge
+   enumerate it.
+2. The voice now appears in `speechSynthesis.getVoices()` (e.g. "Azure Libby").
+3. Set `?engine=vg`. The app sends a PUA sentinel + SSML fragment to that voice:
+   - `\uE000\uE001\uE002` + SSML  → SSML mode
+   - `\uE000\uE001\uE003` + Speech Markdown → Speech Markdown mode
+4. VoiceGarden's adapter detects the sentinel, parses the SSML, and synthesizes
+   real `<phoneme>` IPA through the engine — **no Azure key in the browser**.
+
+> Note: Web Speech has no SSML support of its own; the PUA sentinel is the side
+> channel that lets plain `speechSynthesis` reach VoiceGarden's SSML engine.
+
+### Provisioning Azure (for `azure` / `auto`)
 
 Three ways to supply Azure credentials (highest precedence first):
 

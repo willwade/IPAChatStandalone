@@ -118,7 +118,7 @@ export async function loadConfig(): Promise<{ config: AppConfig; settings: AppSe
   }
 
   const engineParam = urlParams.get('engine');
-  if (engineParam && ['auto', 'azure', 'webspeech'].includes(engineParam)) {
+  if (engineParam && ['auto', 'azure', 'webspeech', 'vg'].includes(engineParam)) {
     settings.engine = engineParam as AppSettings['engine'];
   }
 

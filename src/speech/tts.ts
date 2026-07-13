@@ -1,9 +1,10 @@
 import type { AppSettings } from '../types';
 import { AzureTTS } from './azure';
 import { WebSpeechTTS, loadWebSpeechVoices } from './webspeech';
+import { VoiceGardenBridge } from './vgbridge';
 
 /** Outcome of a speak attempt, so the UI can show the right feedback. */
-export type SpeakResult = { ok: true; engine: 'azure' | 'webspeech' } | { ok: false; engine: 'none'; message: string };
+export type SpeakResult = { ok: true; engine: 'azure' | 'webspeech' | 'vg' } | { ok: false; engine: 'none'; message: string };
 
 /**
  * Unified TTS. Strategy:
@@ -53,6 +54,26 @@ export class TTS {
 
   private async speak(text: string, opts: { usePhonemes: boolean; isWholeUtterance: boolean }): Promise<SpeakResult> {
     if (!text) return { ok: false, engine: 'none', message: 'Nothing to say' };
+
+    // VoiceGarden bridge: send PUA-sentinel + SSML via Web Speech to a
+    // promoted SAPI voice. Key-free, full <phoneme> fidelity.
+    if (this.settings.engine === 'vg') {
+      if (!VoiceGardenBridge.supported()) return { ok: false, engine: 'none', message: 'Web Speech unavailable' };
+      try {
+        await loadWebSpeechVoices();
+        await VoiceGardenBridge.speak(text, {
+          voice: this.settings.voice,
+          language: this.settings.language,
+          rate: this.settings.rate,
+          pitch: this.settings.pitch,
+          usePhonemes: opts.usePhonemes,
+          isWholeUtterance: opts.isWholeUtterance,
+        });
+        return { ok: true, engine: 'vg' };
+      } catch (e) {
+        return { ok: false, engine: 'none', message: errMsg(e) };
+      }
+    }
 
     const wantAzure = this.usingAzure;
     if (wantAzure) {

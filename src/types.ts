@@ -25,7 +25,7 @@ export interface ToolbarConfig {
 export type UIMode = 'message' | 'grid' | 'simplified' | 'minimal' | 'kiosk';
 
 /** Speech engine selection. */
-export type SpeechEngine = 'auto' | 'azure' | 'webspeech';
+export type SpeechEngine = 'auto' | 'azure' | 'webspeech' | 'vg';
 
 /** Runtime settings persisted to localStorage. */
 export interface AppSettings {

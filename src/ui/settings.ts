@@ -128,9 +128,14 @@ export class SettingsSheet {
   private engineSelect(s: AppSettings): HTMLElement {
     const sel = document.createElement('select');
     sel.className = 'ipa-settings-ctrl';
-    for (const e of ['auto', 'azure', 'webspeech'] as SpeechEngine[]) {
-      const label = e === 'auto' ? 'Auto' : e === 'azure' ? 'Azure' : 'Web Speech';
-      sel.add(new Option(label, e, false, s.engine === e));
+    const options: [SpeechEngine, string][] = [
+      ['auto', 'Auto'],
+      ['azure', 'Azure (key)'],
+      ['vg', 'VoiceGarden (SAPI)'],
+      ['webspeech', 'Web Speech'],
+    ];
+    for (const [val, label] of options) {
+      sel.add(new Option(label, val, false, s.engine === val));
     }
     sel.addEventListener('change', () => this.actions.onChange({ engine: sel.value as SpeechEngine }));
     return sel;
