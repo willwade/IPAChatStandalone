@@ -57,12 +57,21 @@ describe('VoiceGarden bridge sentinels', () => {
     expect(VG_FMT_SMD).toBe('\uE003');
   });
 
-  it('builds a key-free SSML payload (sentinel + fragment, no <speak> wrapper)', () => {
-    // Mirror the payload shape the TTS engine sends for engine:'vg'.
-    const fragment = `<voice name="en-GB-LibbyNeural"><prosody rate="+0%" pitch="+0st"><phoneme alphabet="ipa" ph="m\u00E6t\u0283"/></prosody></voice>`;
-    const payload = VG_SENTINEL + VG_FMT_SSML + fragment;
-    expect(payload.startsWith('\uE000\uE001\uE002')).toBe(true);
-    expect(payload.includes('<speak')).toBe(false);
-    expect(payload.includes('<phoneme alphabet="ipa" ph="m\u00E6t\u0283"/>')).toBe(true);
+  it('builds a key-free Speech Markdown payload (sentinel + ipa modifier)', () => {
+    // Speech Markdown is the default vg format: Chrome strips angle brackets
+    // from SSML, but (ipa)[ipa:"..."] has none and survives intact.
+    const ipa = 'm\u00E6t\u0283';
+    const body = `(${ipa})[ipa:"${ipa}"]`;
+    const payload = VG_SENTINEL + VG_FMT_SMD + body;
+    expect(payload.startsWith('\uE000\uE001\uE003')).toBe(true);
+    expect(payload.includes('<')).toBe(false);
+    expect(payload.includes('[ipa:"m\u00E6t\u0283"]')).toBe(true);
+  });
+
+  it('includes a rate modifier for non-default rate', () => {
+    const ipa = 'h\u0259\u02C8l\u0259\u028A';
+    const body = `(${ipa})[ipa:"${ipa}";rate:"slow"]`;
+    const payload = VG_SENTINEL + VG_FMT_SMD + body;
+    expect(payload.includes('rate:"slow"')).toBe(true);
   });
 });

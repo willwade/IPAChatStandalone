@@ -106,11 +106,14 @@ Azure key in the page. Requires [VoiceGarden-SAPI](https://github.com/AACTools/V
    or via the UI). v0.4.6 registers it in `Speech_OneCore` so Chrome/Edge
    enumerate it.
 2. The voice now appears in `speechSynthesis.getVoices()` (e.g. "Azure Libby").
-3. Set `?engine=vg`. The app sends a PUA sentinel + SSML fragment to that voice:
-   - `\uE000\uE001\uE002` + SSML  → SSML mode
-   - `\uE000\uE001\uE003` + Speech Markdown → Speech Markdown mode
-4. VoiceGarden's adapter detects the sentinel, parses the SSML, and synthesizes
-   real `<phoneme>` IPA through the engine — **no Azure key in the browser**.
+3. Set `?engine=vg`. The app sends a PUA sentinel + **Speech Markdown** payload
+   (Chrome strips angle brackets from SSML, so Speech Markdown's bracket-free
+   `(text)[ipa:"..."]` syntax is what survives the trip):
+   - `\uE000\uE001\uE003` + Speech Markdown → **default**, e.g. `(mætʃ)[ipa:"mætʃ"]`
+   - `\uE000\uE001\uE002` + SSML fragment → legacy, for non-browser hosts
+4. VoiceGarden's adapter detects the sentinel, parses the Speech Markdown, and
+   synthesizes real IPA `<phoneme>` through the engine — **no Azure key in the
+   browser**.
 
 > Note: Web Speech has no SSML support of its own; the PUA sentinel is the side
 > channel that lets plain `speechSynthesis` reach VoiceGarden's SSML engine.

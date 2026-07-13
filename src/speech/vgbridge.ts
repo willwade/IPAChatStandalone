@@ -25,7 +25,8 @@ export interface VgBridgeOptions {
   language: string;
   rate: number;
   pitch: number;
-  /** Payload format: 'ssml' (default) or 'smd' (Speech Markdown). */
+  /** Payload format: 'smd' (Speech Markdown, default — survives Chrome's angle
+   * bracket stripping) or 'ssml' (raw SSML fragment, for non-browser hosts). */
   format?: 'ssml' | 'smd';
   usePhonemes?: boolean;
   isWholeUtterance?: boolean;
@@ -60,18 +61,13 @@ export class VoiceGardenBridge {
     await loadWebSpeechVoices();
     const voice = this.pickVoice(opts.voice, opts.language);
 
-    // Send an SSML *fragment* (no <speak> wrapper). The sentinel already tells
-    // VoiceGarden "the following is SSML", so a full speak doc is redundant —
-    // and full docs currently cause VoiceGarden to read the wrapper literally.
-    const fragment = buildSSMLFragment(text, {
-      voice: opts.voice,
-      rate: opts.rate,
-      pitch: opts.pitch,
-      usePhonemes: opts.usePhonemes,
-      isWholeUtterance: opts.isWholeUtterance,
-    });
-    const fmt = opts.format === 'smd' ? VG_FMT_SMD : VG_FMT_SSML;
-    const payload = VG_SENTINEL + fmt + fragment;
+    // Build the payload. Default to Speech Markdown (\uE003): Chrome strips
+    // angle brackets from SSML, so SSML mode (\uE002) is unreliable through a
+    // browser. Speech Markdown's IPA form (text)[ipa:"..."] has no angle
+    // brackets and survives intact.
+    const fmt = opts.format === 'ssml' ? VG_FMT_SSML : VG_FMT_SMD;
+    const body = opts.format === 'ssml' ? buildSSMLFragment(text, opts) : buildSpeechMarkdown(text, opts);
+    const payload = VG_SENTINEL + fmt + body;
 
     return new Promise<void>((resolve, reject) => {
       try {
@@ -90,7 +86,29 @@ export class VoiceGardenBridge {
   }
 }
 
-/** Build an SSML fragment (inner content) for the VoiceGarden bridge. */
+/** Build a Speech Markdown payload. IPA input -> (ipa)[ipa:"ipa"], optionally
+ * with a rate modifier. Speech Markdown has no angle brackets, so it survives
+ * Chrome's text sanitization on its way to the SAPI voice. */
+function buildSpeechMarkdown(
+  text: string,
+  opts: { rate: number; usePhonemes?: boolean },
+): string {
+  // Strip characters that would break the modifier syntax (rare in IPA).
+  const clean = (s: string) => s.replace(/["()\[\]]/g, '');
+  const rateKeyword = rateToSpeechMarkdown(opts.rate);
+
+  if (opts.usePhonemes) {
+    const ipa = clean(text);
+    if (rateKeyword) {
+      return `(${ipa})[ipa:"${ipa}";rate:"${rateKeyword}"]`;
+    }
+    return `(${ipa})[ipa:"${ipa}"]`;
+  }
+  // Plain text: Speech Markdown treats unmodified text as plain speech.
+  return clean(text);
+}
+
+/** Build an SSML fragment (inner content) — kept for the legacy ssml format. */
 function buildSSMLFragment(
   text: string,
   opts: { voice: string; rate: number; pitch: number; usePhonemes?: boolean; isWholeUtterance?: boolean },
@@ -101,6 +119,15 @@ function buildSSMLFragment(
   const slow = opts.isWholeUtterance === false ? '-10%' : rateStr;
   const inner = opts.usePhonemes ? `<phoneme alphabet="ipa" ph="${escapeXml(text)}"/>` : escapeXml(text);
   return `<voice name="${opts.voice}"><prosody rate="${slow}" pitch="${pitchStr}">${inner}</prosody></voice>`;
+}
+
+/** Map a 0.5-2.0 rate to a Speech Markdown rate keyword (or '' for default). */
+function rateToSpeechMarkdown(rate: number): string {
+  if (rate <= 0.6) return 'x-slow';
+  if (rate <= 0.85) return 'slow';
+  if (rate < 1.15) return ''; // default — omit modifier
+  if (rate < 1.4) return 'fast';
+  return 'x-fast';
 }
 
 function escapeXml(s: string): string {
