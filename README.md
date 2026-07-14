@@ -93,11 +93,15 @@ behaves identically every launch.
 | `rate` | 0.5–2 | Speech rate | `?rate=0.9` |
 | `key` | Azure key | Azure credentials (per-URL) | `?key=...` |
 | `region` | Azure region | Azure region | `&region=uksouth` |
+| `speakMode` | `off`\|`each`\|`running` | Speak as you type: silent / each phoneme / running sequence | `?speakMode=each` |
+| `babble` | `1`\|`0` | Babble — hear each phoneme as typed, Enter commits | `?babble=1` |
 | `builder` | (present) | Open the config-builder page | `?builder` |
 
 Examples:
 - Grid keyboard, Libby, slow: <https://willwade.github.io/IPAChatStandalone/?mode=grid&voice=en-GB-LibbyNeural&rate=0.9>
 - Kiosk with minimal symbol set, VoiceGarden: <https://willwade.github.io/IPAChatStandalone/?ui=kiosk&config=minimal&engine=vg>
+- Babble (hear each phoneme, Enter to speak): <https://willwade.github.io/IPAChatStandalone/?babble=1>
+- Speak the running word as you type: <https://willwade.github.io/IPAChatStandalone/?speakMode=running>
 
 ---
 
@@ -160,9 +164,21 @@ visuals. Five sources, layered (highest precedence wins):
 | **Ctrl/Cmd + Backspace** | Clear all |
 | **Ctrl/Cmd + Z** | Undo |
 | **Ctrl/Cmd + ,** | Toggle Settings |
+| **Ctrl/Cmd + Shift + M** | Cycle speak-as-you-type mode (off → each → running) |
+| **Ctrl/Cmd + Shift + B** | Toggle Babble (hear each phoneme; Enter commits) |
 | **Esc** | Close Settings |
 
 Click a tile to replay just that phoneme.
+
+**Speak-as-you-type modes** — `Ctrl+Shift+M` cycles:
+- **off** — silent while typing; Enter speaks the whole sequence.
+- **each** — each phoneme is spoken the moment it completes.
+- **running** — the whole sequence-so-far is spoken after each keystroke (hear the word build).
+
+**Babble** (`Ctrl+Shift+M`'s cousin, `Ctrl+Shift+B`) — type phonemes into a hidden
+buffer (each is spoken immediately); the bar shows a dashed "Babbling…" border.
+Press **Enter** to commit the buffer as one utterance and speak it. Useful for
+experimenting with sounds without cluttering the message.
 
 ---
 
