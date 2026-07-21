@@ -95,6 +95,7 @@ behaves identically every launch.
 | `region` | Azure region | Azure region | `&region=uksouth` |
 | `speakMode` | `off`\|`each`\|`running` | Speak as you type: silent / each phoneme / running sequence | `?speakMode=each` |
 | `babble` | `1`\|`0` | Babble — hear each phoneme as typed, Enter commits | `?babble=1` |
+| `noimages` | `1`\|`0` | Hide all symbol images, show IPA glyphs only | `?noimages=1` |
 | `builder` | (present) | Open the config-builder page | `?builder` |
 
 Examples:
@@ -102,6 +103,7 @@ Examples:
 - Kiosk with minimal symbol set, VoiceGarden: <https://willwade.github.io/IPAChatStandalone/?ui=kiosk&config=minimal&engine=vg>
 - Babble (hear each phoneme, Enter to speak): <https://willwade.github.io/IPAChatStandalone/?babble=1>
 - Speak the running word as you type: <https://willwade.github.io/IPAChatStandalone/?speakMode=running>
+- **IPA glyphs only (no images):** <https://willwade.github.io/IPAChatStandalone/?noimages=1>
 
 ---
 

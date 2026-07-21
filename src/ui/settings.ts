@@ -100,6 +100,7 @@ export class SettingsSheet {
     behaviours.appendChild(this.check('clearPhraseOnPlay', 'Clear on play', s.clearPhraseOnPlay));
     behaviours.appendChild(this.check('speakOnButtonPress', 'Speak on press', s.speakOnButtonPress));
     behaviours.appendChild(this.check('babble', 'Babble (Enter to speak)', s.babble));
+    behaviours.appendChild(this.check('hideImages', 'Images off (IPA glyphs only)', s.hideImages));
     this.card.appendChild(behaviours);
   }
 

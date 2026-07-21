@@ -73,20 +73,20 @@ export class Keyboard {
       buttons.className = 'ipa-group__buttons';
 
       for (const p of visible) {
-        buttons.appendChild(this.makeKey(p, custom[p], config.imageBase));
+        buttons.appendChild(this.makeKey(p, custom[p], config.imageBase, config.hideImages));
       }
       wrap.appendChild(buttons);
       this.el.appendChild(wrap);
     }
   }
 
-  private makeKey(phoneme: string, cust: PhonemeCustomization | undefined, imageBase?: string): HTMLElement {
+  private makeKey(phoneme: string, cust: PhonemeCustomization | undefined, imageBase?: string, hideImages?: boolean): HTMLElement {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'ipa-key';
     btn.dataset.phoneme = phoneme;
 
-    const hasImg = !!cust?.image;
+    const hasImg = !hideImages && !!cust?.image;
     const hideLabel = !!cust?.hideLabel;
     if (hasImg && hideLabel) btn.classList.add('ipa-key--no-label');
 

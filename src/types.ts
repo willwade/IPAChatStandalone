@@ -46,6 +46,8 @@ export interface AppSettings {
   speakMode: SpeakMode;
   /** Babble: speak each phoneme as typed into a hidden buffer; Enter commits it. */
   babble: boolean;
+  /** Hide all symbol images and show IPA glyphs only (any loaded layout). */
+  hideImages: boolean;
 }
 
 /** A phoneme group rendered as a labelled colour band. */
@@ -73,4 +75,6 @@ export interface AppConfig {
   toolbar?: ToolbarConfig;
   settings?: Partial<AppSettings>;
   ui?: UIMode;
+  /** When true, ignore all ipaCustomizations images and render glyphs only. */
+  hideImages?: boolean;
 }

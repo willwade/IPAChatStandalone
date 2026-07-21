@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   engine: 'auto',
   speakMode: 'off',
   babble: false,
+  hideImages: false,
 };
 
 const DEFAULT_TOOLBAR: Required<ToolbarConfig> = {
@@ -152,6 +153,10 @@ export async function loadConfig(): Promise<{ config: AppConfig; settings: AppSe
   const babbleParam = urlParams.get('babble');
   if (babbleParam === '1' || babbleParam?.toLowerCase() === 'true') settings.babble = true;
   if (babbleParam === '0' || babbleParam?.toLowerCase() === 'false') settings.babble = false;
+
+  const noImagesParam = urlParams.get('noimages') ?? urlParams.get('hideimages');
+  if (noImagesParam === '1' || noImagesParam?.toLowerCase() === 'true') settings.hideImages = true;
+  if (noImagesParam === '0' || noImagesParam?.toLowerCase() === 'false') settings.hideImages = false;
 
   // Azure credentials may be supplied (highest to lowest):
   //   URL params  >  config file  >  localStorage  >  build-time VITE_* env

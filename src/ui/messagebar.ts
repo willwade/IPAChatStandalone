@@ -58,9 +58,9 @@ export class MessageBar {
       return;
     }
 
-    phonemes.forEach((p, i) => this.scroller.appendChild(this.makeTile(p, custom[p], false, i, config.imageBase)));
+    phonemes.forEach((p, i) => this.scroller.appendChild(this.makeTile(p, custom[p], false, i, config.imageBase, config.hideImages)));
     if (partial) {
-      this.scroller.appendChild(this.makeTile(partial.replace(/^\//, ''), custom[partial.replace(/^\//, '')], true, phonemes.length, config.imageBase));
+      this.scroller.appendChild(this.makeTile(partial.replace(/^\//, ''), custom[partial.replace(/^\//, '')], true, phonemes.length, config.imageBase, config.hideImages));
     }
 
     // Auto-scroll to the most recent tile.
@@ -69,13 +69,13 @@ export class MessageBar {
     });
   }
 
-  private makeTile(phoneme: string, cust: PhonemeCustomization | undefined, partial: boolean, index: number, imageBase?: string): HTMLElement {
+  private makeTile(phoneme: string, cust: PhonemeCustomization | undefined, partial: boolean, index: number, imageBase?: string, hideImages?: boolean): HTMLElement {
     const tile = document.createElement('div');
     tile.className = 'ipa-tile' + (partial ? ' ipa-tile--partial' : '');
     tile.dataset.phoneme = phoneme;
     tile.dataset.index = String(index);
 
-    if (cust?.image) {
+    if (!hideImages && cust?.image) {
       const img = document.createElement('img');
       img.className = 'ipa-tile__img';
       img.src = resolveImage(cust.image, imageBase);

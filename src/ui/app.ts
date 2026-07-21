@@ -266,6 +266,8 @@ export class App {
     // In babble mode the bar shows the babble buffer (what's being explored).
     const active = this.settings.babble ? this.state.babble : this.state.text;
     const tokens = tokenizePhonemes(active);
+    // Mirror the hideImages setting onto the config so renderers honour it.
+    this.config = { ...this.config, hideImages: this.settings.hideImages };
     this.scratchpad.render(active);
     this.messageBar.render(tokens.completedPhonemes, tokens.partialInput, this.config);
     this.toolbar.render({
