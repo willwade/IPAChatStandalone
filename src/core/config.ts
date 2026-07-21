@@ -113,12 +113,13 @@ export async function loadConfig(): Promise<{ config: AppConfig; settings: AppSe
   };
 
   // 5. explicit URL params override everything
-  const uiParam = urlParams.get('ui') as UIMode | null;
-  if (uiParam) config.ui = uiParam;
+  const uiParam = urlParams.get('ui');
+  if (uiParam) config.ui = uiParam.toLowerCase() as UIMode;
   if (!config.ui) config.ui = DEFAULT_UI;
 
   const modeParam = urlParams.get('mode');
-  if (modeParam === 'grid' || modeParam === 'message') config.ui = modeParam;
+  const modeLower = modeParam?.toLowerCase();
+  if (modeLower === 'grid' || modeLower === 'message') config.ui = modeLower;
 
   const toolbarParam = urlParams.getList('toolbar');
   if (toolbarParam) {
@@ -138,17 +139,19 @@ export async function loadConfig(): Promise<{ config: AppConfig; settings: AppSe
   }
 
   const engineParam = urlParams.get('engine');
-  if (engineParam && ['auto', 'azure', 'webspeech', 'vg'].includes(engineParam)) {
-    settings.engine = engineParam as AppSettings['engine'];
+  const engineLower = engineParam?.toLowerCase();
+  if (engineLower && ['auto', 'azure', 'webspeech', 'vg'].includes(engineLower)) {
+    settings.engine = engineLower as AppSettings['engine'];
   }
 
   const speakModeParam = urlParams.get('speakMode');
-  if (speakModeParam && ['off', 'each', 'running'].includes(speakModeParam)) {
-    settings.speakMode = speakModeParam as SpeakMode;
+  const speakModeLower = speakModeParam?.toLowerCase();
+  if (speakModeLower && ['off', 'each', 'running'].includes(speakModeLower)) {
+    settings.speakMode = speakModeLower as SpeakMode;
   }
   const babbleParam = urlParams.get('babble');
-  if (babbleParam === '1' || babbleParam === 'true') settings.babble = true;
-  if (babbleParam === '0' || babbleParam === 'false') settings.babble = false;
+  if (babbleParam === '1' || babbleParam?.toLowerCase() === 'true') settings.babble = true;
+  if (babbleParam === '0' || babbleParam?.toLowerCase() === 'false') settings.babble = false;
 
   // Azure credentials may be supplied (highest to lowest):
   //   URL params  >  config file  >  localStorage  >  build-time VITE_* env
