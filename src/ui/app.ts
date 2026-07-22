@@ -40,7 +40,7 @@ export class App {
     this.state = { text: '', babble: '', undoStack: [] };
     this.tts = new TTS(settings);
 
-    this.messageBar = new MessageBar({ onPlay: (p) => this.playSingle(p) });
+    this.messageBar = new MessageBar({ onPlay: (p) => this.playSingle(p), onType: (s) => this.appendPhoneme(s) });
     this.keyboard = new Keyboard({ onPhoneme: (p) => this.appendPhoneme(p) });
     this.toolbar = new Toolbar({
       onSpeak: () => this.onSpeak(),
@@ -83,11 +83,13 @@ export class App {
 
     this.overlay.mount(document.body);
     this.settingsSheet.mount(document.body);
+    this.messageBar.attachSettingsWatcher();
 
     this.shortcuts.attach();
     this.keyboard.render(this.config, this.settings.language);
     this.syncBabblePlaceholder();
     this.render();
+    this.messageBar.focus();
 
     if (!this.tts.usingAzure) {
       this.overlay.show('Using Web Speech voices', 'info', 2500);

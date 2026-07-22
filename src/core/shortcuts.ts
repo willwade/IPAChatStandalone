@@ -49,8 +49,15 @@ export class Shortcuts {
 
   private onKey(e: KeyboardEvent): void {
     const target = e.target as HTMLElement | null;
-    // Allow toggling/closing even when focused in a settings input.
-    const inField = !!target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA');
+    // The hidden message capture input forwards its characters via its own
+    // `input` event (so Alt-Numpad codes, paste and IME composition all work).
+    // When it has focus we must NOT also append single chars here (they'd double
+    // up), but we still want shortcuts (Enter/Backspace/undo…) to fire — so treat
+    // it as "not a field" for the inField gate below.
+    const onCaptureInput = !!target && target.classList.contains('ipa-capture-input');
+    const inField = !!target
+      && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')
+      && !onCaptureInput;
 
     // Settings shortcuts work everywhere (so the panel can be closed from a field).
     if ((e.ctrlKey || e.metaKey) && e.key === ',') {
@@ -68,6 +75,7 @@ export class Shortcuts {
 
     if (inField) return; // don't hijack typing inside settings inputs
     if (this.actions.isSettingsOpen()) return; // panel open + not a close key -> ignore
+    if (e.isComposing) return; // let IME composition finish before acting
 
     if (e.ctrlKey || e.metaKey) {
       if (e.key === 'Backspace') {
@@ -115,6 +123,11 @@ export class Shortcuts {
 
     if (e.key.length === 1) {
       const ch = e.key;
+      // The capture input delivers printable chars through its `input` event
+      // (which also catches Alt-codes, paste and IME). Skip here to avoid
+      // appending twice; the keydown path below is the fallback for when the
+      // capture input isn't focused (e.g. Grid 3's web view).
+      if (onCaptureInput) return;
       if (ch === '/' || isLikelyPhonemeChar(ch)) {
         e.preventDefault();
         this.actions.appendPhoneme(ch);
@@ -125,7 +138,7 @@ export class Shortcuts {
 
 /** Heuristic: accept letters (any Unicode letter incl. IPA/Greek), combining
  * diacritics, and the stress/intonation glyphs used in the bundled data. */
-function isLikelyPhonemeChar(ch: string): boolean {
+export function isLikelyPhonemeChar(ch: string): boolean {
   if (ch.length !== 1) return false;
   const code = ch.codePointAt(0) ?? 0;
   if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) return true;

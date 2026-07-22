@@ -1,8 +1,11 @@
 import type { AppConfig, PhonemeCustomization } from '../types';
 import { resolveImage } from '../core/config';
+import { isLikelyPhonemeChar } from '../core/shortcuts';
 
 export interface TileActions {
   onPlay(phoneme: string): void;
+  /** Receive typed / pasted / composed characters (already filtered to phoneme chars). */
+  onType(chars: string): void;
 }
 
 /**
@@ -17,7 +20,9 @@ export class MessageBar {
   private el: HTMLElement;
   private container: HTMLElement;
   private scroller: HTMLElement;
+  private captureInput: HTMLInputElement;
   private actions: TileActions;
+  private composing = false;
 
   constructor(actions: TileActions) {
     this.actions = actions;
@@ -32,10 +37,81 @@ export class MessageBar {
 
     this.container.appendChild(this.scroller);
     this.el.appendChild(this.container);
+
+    // Hidden text-capture input. The message bar owns no other focused field,
+    // so without this, characters that don't arrive as a `keydown` with the
+    // glyph in `e.key` (Alt-Numpad codes e.g. Alt+0230 = æ, clipboard paste, and
+    // IME composition) have nowhere to land and are silently dropped. Its value
+    // is flushed to onType and cleared on every change.
+    this.captureInput = document.createElement('input');
+    this.captureInput.type = 'text';
+    this.captureInput.className = 'ipa-capture-input';
+    this.captureInput.setAttribute('aria-label', 'Phoneme input');
+    this.captureInput.autocomplete = 'off';
+    this.captureInput.setAttribute('autocapitalize', 'off');
+    this.captureInput.spellcheck = false;
+    this.el.appendChild(this.captureInput);
+
+    this.captureInput.addEventListener('input', () => {
+      if (!this.composing) this.flush();
+    });
+    this.captureInput.addEventListener('compositionstart', () => { this.composing = true; });
+    this.captureInput.addEventListener('compositionend', () => {
+      this.composing = false;
+      this.flush();
+    });
+
+    // Clicking the message area (re)claims focus after toolbar interaction.
+    this.el.addEventListener('click', () => {
+      if (!this.settingsOpen()) this.focus();
+    });
+
+    // Reclaim focus when we lose it, unless it moved into the settings sheet.
+    this.captureInput.addEventListener('blur', () => {
+      window.setTimeout(() => {
+        if (this.settingsOpen()) return;
+        const ae = document.activeElement as HTMLElement | null;
+        if (ae && ae.closest && ae.closest('.ipa-settings-card')) return;
+        this.focus();
+      }, 0);
+    });
   }
 
   mount(parent: HTMLElement): void {
     parent.appendChild(this.el);
+  }
+
+  /** Move focus into the capture input so Alt-codes / paste / IME land here. */
+  focus(): void {
+    if (!this.settingsOpen()) this.captureInput.focus({ preventScroll: true });
+  }
+
+  /** Watch the settings overlay and reclaim focus when it closes. Call after
+   * the settings sheet is mounted. */
+  attachSettingsWatcher(): void {
+    const overlay = document.querySelector('.ipa-settings-overlay') as HTMLElement | null;
+    if (!overlay) return;
+    new MutationObserver(() => {
+      if (overlay.style.display === 'none') this.focus();
+    }).observe(overlay, { attributes: true, attributeFilter: ['style'] });
+  }
+
+  private settingsOpen(): boolean {
+    const o = document.querySelector('.ipa-settings-overlay') as HTMLElement | null;
+    return !!o && o.style.display !== 'none';
+  }
+
+  /** Forward the capture input's current value (filtered to phoneme chars) to
+   * onType, then clear it. Called on `input` (non-composing) and `compositionend`. */
+  private flush(): void {
+    const v = this.captureInput.value;
+    this.captureInput.value = '';
+    if (!v || this.settingsOpen()) return;
+    let accepted = '';
+    for (const ch of v) {
+      if (ch === '/' || isLikelyPhonemeChar(ch)) accepted += ch;
+    }
+    if (accepted) this.actions.onType(accepted);
   }
 
   get element(): HTMLElement {
