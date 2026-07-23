@@ -57,6 +57,7 @@ export class App {
     this.shortcuts = new Shortcuts({
       appendPhoneme: (p) => this.appendPhoneme(p),
       speak: () => this.onSpeak(),
+      speakKeep: () => this.onSpeak(true),
       backspace: () => this.backspace(),
       clearAll: () => this.clearAll(),
       undo: () => this.undo(),
@@ -150,7 +151,10 @@ export class App {
     }
   }
 
-  async onSpeak(): Promise<void> {
+  /** Speak the current sequence. `keepAfter` (Ctrl+Enter) speaks without
+   *  clearing, overriding clearPhraseOnPlay. */
+  async onSpeak(keepAfter = false): Promise<void> {
+    const shouldClear = !keepAfter && this.settings.clearPhraseOnPlay;
     // In babble mode, Enter commits the babble buffer to the message and speaks it.
     if (this.settings.babble && this.state.babble) {
       const tokens = tokenizePhonemes(this.toIpa(this.state.babble));
@@ -165,7 +169,7 @@ export class App {
         this.pushUndo();
         this.state.text = this.state.babble;
         this.state.babble = '';
-        if (this.settings.clearPhraseOnPlay) this.state.text = '';
+        if (shouldClear) this.state.text = '';
         this.render();
       }
       return;
@@ -186,7 +190,7 @@ export class App {
 
     this.reportSpeak(result);
 
-    if (result.ok && this.settings.clearPhraseOnPlay) {
+    if (result.ok && shouldClear) {
       this.pushUndo();
       this.state.text = '';
       this.render();

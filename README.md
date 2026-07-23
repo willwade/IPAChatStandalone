@@ -164,6 +164,7 @@ visuals. Five sources, layered (highest precedence wins):
 | Type a phoneme glyph | Append it (any Unicode letter: IPA, Greek θ, etc.) |
 | `/ t ʃ /` | Build a multi-char phoneme (`tʃ`) |
 | **Enter** | Speak the sequence |
+| **Ctrl/Cmd + Enter** | Speak **without clearing** (overrides Clear on play) |
 | **Backspace** | Remove last phoneme |
 | **Ctrl/Cmd + Backspace** | Clear all |
 | **Ctrl/Cmd + Z** | Undo |

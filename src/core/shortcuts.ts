@@ -4,6 +4,8 @@ import { acceptChar } from '../phoneme/convert';
 export interface ShortcutActions {
   appendPhoneme(phoneme: string): void;
   speak(): void;
+  /** Speak without clearing the message (Ctrl/Cmd+Enter). */
+  speakKeep(): void;
   backspace(): void;
   clearAll(): void;
   undo(): void;
@@ -22,6 +24,7 @@ export interface ShortcutActions {
  *     e.g. typing `/t` then `\u0283` then `/` yields "t\u0283".
  *  2. Shortcuts:
  *     - Enter                 -> speak current sequence
+ *     - Ctrl/Cmd + Enter      -> speak WITHOUT clearing (overrides Clear on play)
  *     - Backspace             -> remove last phoneme (phoneme-aware)
  *     - Ctrl/Cmd + Backspace  -> clear all
  *     - Ctrl/Cmd + Z          -> undo last action
@@ -87,6 +90,11 @@ export class Shortcuts {
       if (e.key === 'Backspace') {
         e.preventDefault();
         this.actions.clearAll();
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.actions.speakKeep();
         return;
       }
       if (e.key.toLowerCase() === 'z') {
