@@ -96,6 +96,7 @@ behaves identically every launch.
 | `speakMode` | `off`\|`each`\|`running` | Speak as you type: silent / each phoneme / running sequence | `?speakMode=each` |
 | `babble` | `1`\|`0` | Babble — hear each phoneme as typed, Enter commits | `?babble=1` |
 | `noimages` | `1`\|`0` | Hide all symbol images, show IPA glyphs only | `?noimages=1` |
+| `input` | `ipa`\|`x-sampa`\|`sampa` | Typed notation: literal IPA glyphs (default) or X-SAMPA converted to IPA (`S`→ʃ, `{`→æ, `tS`→tʃ) | `?input=x-sampa` |
 | `builder` | (present) | Open the config-builder page | `?builder` |
 
 Examples:
@@ -104,6 +105,7 @@ Examples:
 - Babble (hear each phoneme, Enter to speak): <https://willwade.github.io/IPAChatStandalone/?babble=1>
 - Speak the running word as you type: <https://willwade.github.io/IPAChatStandalone/?speakMode=running>
 - **IPA glyphs only (no images):** <https://willwade.github.io/IPAChatStandalone/?noimages=1>
+- **Type X-SAMPA** (ASCII converted to IPA as you type): <https://willwade.github.io/IPAChatStandalone/?input=x-sampa>
 
 ---
 

@@ -30,6 +30,12 @@ export type SpeechEngine = 'auto' | 'azure' | 'webspeech' | 'vg';
 /** Auditory feedback while typing. */
 export type SpeakMode = 'off' | 'each' | 'running';
 
+/** How typed characters are interpreted before they reach the IPA pipeline.
+ *  'ipa' (default) treats them as literal Unicode IPA glyphs; 'x-sampa' converts
+ *  ASCII X-SAMPA (e.g. S -> ʃ, { -> æ, tS -> tʃ) to IPA. 'sampa' is treated as a
+ *  synonym for 'x-sampa' since X-SAMPA is the universal superset. */
+export type InputMode = 'ipa' | 'x-sampa';
+
 /** Runtime settings persisted to localStorage. */
 export interface AppSettings {
   language: string;
@@ -48,6 +54,9 @@ export interface AppSettings {
   babble: boolean;
   /** Hide all symbol images and show IPA glyphs only (any loaded layout). */
   hideImages: boolean;
+  /** How typed input is interpreted: literal IPA glyphs, or X-SAMPA converted
+   *  to IPA. Set via ?input=ipa|x-sampa|sampa. */
+  inputMode: InputMode;
 }
 
 /** A phoneme group rendered as a labelled colour band. */

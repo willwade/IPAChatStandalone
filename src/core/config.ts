@@ -14,6 +14,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   speakMode: 'off',
   babble: false,
   hideImages: false,
+  inputMode: 'ipa',
 };
 
 const DEFAULT_TOOLBAR: Required<ToolbarConfig> = {
@@ -157,6 +158,13 @@ export async function loadConfig(): Promise<{ config: AppConfig; settings: AppSe
   const noImagesParam = urlParams.get('noimages') ?? urlParams.get('hideimages');
   if (noImagesParam === '1' || noImagesParam?.toLowerCase() === 'true') settings.hideImages = true;
   if (noImagesParam === '0' || noImagesParam?.toLowerCase() === 'false') settings.hideImages = false;
+
+  // Input notation: ?input=ipa (default) | x-sampa | xsampa | sampa.
+  // X-SAMPA is the universal ASCII rendering of IPA; "sampa" is accepted as a
+  // synonym since per-language SAMPA needs a language context we don't model.
+  const inputParam = (urlParams.get('input') ?? urlParams.get('inputtype') ?? urlParams.get('inputmode'))?.toLowerCase();
+  if (inputParam === 'ipa') settings.inputMode = 'ipa';
+  else if (inputParam === 'x-sampa' || inputParam === 'xsampa' || inputParam === 'sampa') settings.inputMode = 'x-sampa';
 
   // Azure credentials may be supplied (highest to lowest):
   //   URL params  >  config file  >  localStorage  >  build-time VITE_* env

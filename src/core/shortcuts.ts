@@ -1,3 +1,6 @@
+import type { InputMode } from '../types';
+import { acceptChar } from '../phoneme/convert';
+
 export interface ShortcutActions {
   appendPhoneme(phoneme: string): void;
   speak(): void;
@@ -33,6 +36,9 @@ export interface ShortcutActions {
 export class Shortcuts {
   private actions: ShortcutActions;
   private handler: (e: KeyboardEvent) => void;
+  /** Current input notation, so the keydown path accepts X-SAMPA symbols too.
+   *  Set by the app from settings.inputMode. */
+  inputMode: InputMode = 'ipa';
 
   constructor(actions: ShortcutActions) {
     this.actions = actions;
@@ -123,27 +129,15 @@ export class Shortcuts {
 
     if (e.key.length === 1) {
       const ch = e.key;
-      // The capture input delivers printable chars through its `input` event
-      // (which also catches Alt-codes, paste and IME). Skip here to avoid
+      // The capture input delivers printable chars through its own `input`
+      // event (which also catches Alt-codes, paste and IME). Skip here to avoid
       // appending twice; the keydown path below is the fallback for when the
       // capture input isn't focused (e.g. Grid 3's web view).
       if (onCaptureInput) return;
-      if (ch === '/' || isLikelyPhonemeChar(ch)) {
+      if (acceptChar(ch, this.inputMode)) {
         e.preventDefault();
         this.actions.appendPhoneme(ch);
       }
     }
   }
-}
-
-/** Heuristic: accept letters (any Unicode letter incl. IPA/Greek), combining
- * diacritics, and the stress/intonation glyphs used in the bundled data. */
-export function isLikelyPhonemeChar(ch: string): boolean {
-  if (ch.length !== 1) return false;
-  const code = ch.codePointAt(0) ?? 0;
-  if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) return true;
-  if (/\p{L}/u.test(ch)) return true;
-  if (code >= 0x300 && code <= 0x36f) return true;
-  if ('\u02C8\u02CC\u02D0\u02D1\u2191\u2193\u21D7\u21D8|'.includes(ch)) return true;
-  return false;
 }

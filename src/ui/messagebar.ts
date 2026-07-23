@@ -1,6 +1,6 @@
-import type { AppConfig, PhonemeCustomization } from '../types';
+import type { AppConfig, InputMode, PhonemeCustomization } from '../types';
 import { resolveImage } from '../core/config';
-import { isLikelyPhonemeChar } from '../core/shortcuts';
+import { acceptChar } from '../phoneme/convert';
 
 export interface TileActions {
   onPlay(phoneme: string): void;
@@ -23,6 +23,9 @@ export class MessageBar {
   private captureInput: HTMLInputElement;
   private actions: TileActions;
   private composing = false;
+  /** Current input notation, so flush accepts X-SAMPA symbols ({ @ 7 …) and
+   *  not just IPA glyphs. Set by the app from settings.inputMode. */
+  inputMode: InputMode = 'ipa';
 
   constructor(actions: TileActions) {
     this.actions = actions;
@@ -101,15 +104,16 @@ export class MessageBar {
     return !!o && o.style.display !== 'none';
   }
 
-  /** Forward the capture input's current value (filtered to phoneme chars) to
-   * onType, then clear it. Called on `input` (non-composing) and `compositionend`. */
+  /** Forward the capture input's current value (filtered to accepted chars for
+   * the active input mode) to onType, then clear it. Called on `input`
+   * (non-composing) and `compositionend`. */
   private flush(): void {
     const v = this.captureInput.value;
     this.captureInput.value = '';
     if (!v || this.settingsOpen()) return;
     let accepted = '';
     for (const ch of v) {
-      if (ch === '/' || isLikelyPhonemeChar(ch)) accepted += ch;
+      if (acceptChar(ch, this.inputMode)) accepted += ch;
     }
     if (accepted) this.actions.onType(accepted);
   }

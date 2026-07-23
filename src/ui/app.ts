@@ -10,6 +10,7 @@ import { Shortcuts } from '../core/shortcuts';
 import { resolveToolbar } from '../core/config';
 import { storage } from '../core/storage';
 import { tokenizePhonemes, removeLastPhoneme } from '../phoneme/tokenize';
+import { convertInput } from '../phoneme/convert';
 
 interface AppState {
   text: string; // raw phoneme string (may include `/.../` delimiters)
@@ -87,6 +88,7 @@ export class App {
 
     this.shortcuts.attach();
     this.keyboard.render(this.config, this.settings.language);
+    this.syncInputMode();
     this.syncBabblePlaceholder();
     this.render();
     this.messageBar.focus();
@@ -97,6 +99,13 @@ export class App {
   }
 
   // ---------- actions ----------
+
+  /** Convert the raw stored input (which may be X-SAMPA) to IPA using the
+   *  current input mode. Applied read-only at render/speak time; the raw buffer
+   *  is preserved so editing (backspace) stays on the user's original notation. */
+  private toIpa(raw: string): string {
+    return convertInput(raw, this.settings.inputMode);
+  }
 
   /** Play a single phoneme (tile tap or speak-on-press). */
   async playSingle(phoneme: string): Promise<void> {
@@ -128,8 +137,8 @@ export class App {
   private speakOnType(beforeRaw: string, afterRaw: string): void {
     const effectiveMode = this.settings.babble ? 'each' : this.settings.speakMode;
     if (effectiveMode === 'off' && !this.settings.speakOnButtonPress) return;
-    const before = tokenizePhonemes(beforeRaw);
-    const after = tokenizePhonemes(afterRaw);
+    const before = tokenizePhonemes(this.toIpa(beforeRaw));
+    const after = tokenizePhonemes(this.toIpa(afterRaw));
     const grew = after.completedPhonemes.length > before.completedPhonemes.length;
     if (!grew || after.isInProgress) return; // wait until a phoneme actually completes
     if (effectiveMode === 'running') {
@@ -144,7 +153,7 @@ export class App {
   async onSpeak(): Promise<void> {
     // In babble mode, Enter commits the babble buffer to the message and speaks it.
     if (this.settings.babble && this.state.babble) {
-      const tokens = tokenizePhonemes(this.state.babble);
+      const tokens = tokenizePhonemes(this.toIpa(this.state.babble));
       if (tokens.isInProgress) {
         this.overlay.show('Finish the phoneme first', 'info', 1500);
         return;
@@ -162,7 +171,7 @@ export class App {
       return;
     }
 
-    const tokens = tokenizePhonemes(this.state.text);
+    const tokens = tokenizePhonemes(this.toIpa(this.state.text));
     if (!tokens.hasValidInput) {
       this.overlay.show('Nothing to say', 'info', 1500);
       return;
@@ -257,9 +266,17 @@ export class App {
     this.tts.setSettings(this.settings);
     storage.setSettings(patch);
     if (patch.babble !== undefined) this.syncBabblePlaceholder();
+    if (patch.inputMode !== undefined) this.syncInputMode();
     // Re-render keyboard if language changed; toolbar if voice/engine changed.
     if (patch.language) this.keyboard.render(this.config, this.settings.language);
     this.render();
+  }
+
+  /** Push the current input notation down to the capture input + keydown
+   *  handler so they accept the right character set (IPA glyphs vs X-SAMPA). */
+  private syncInputMode(): void {
+    this.messageBar.inputMode = this.settings.inputMode;
+    this.shortcuts.inputMode = this.settings.inputMode;
   }
 
   // ---------- rendering ----------
@@ -267,10 +284,13 @@ export class App {
   private render(): void {
     // In babble mode the bar shows the babble buffer (what's being explored).
     const active = this.settings.babble ? this.state.babble : this.state.text;
-    const tokens = tokenizePhonemes(active);
+    // Convert the raw buffer to IPA (no-op in IPA mode) so tiles + speech always
+    // reflect IPA, even when the user typed X-SAMPA.
+    const ipa = this.toIpa(active);
+    const tokens = tokenizePhonemes(ipa);
     // Mirror the hideImages setting onto the config so renderers honour it.
     this.config = { ...this.config, hideImages: this.settings.hideImages };
-    this.scratchpad.render(active);
+    this.scratchpad.render(ipa);
     this.messageBar.render(tokens.completedPhonemes, tokens.partialInput, this.config);
     this.toolbar.render({
       toolbar: resolveToolbar(this.config.toolbar),
